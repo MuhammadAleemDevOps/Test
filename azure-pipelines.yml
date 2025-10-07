@@ -1,49 +1,50 @@
 trigger:
-- main  # ya jis branch se tu run karwana chahta hai
+- main   # ya jis branch se tu pipeline run karna chahta hai
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
-  EC2_USER: "ec2-user"          # apne EC2 ka username (e.g. ubuntu)
-  EC2_HOST: "3.85.167.56" # EC2 ka Public IP likh
-  EC2_KEY: "$(ssh_key)"          # Azure DevOps secret variable jisme PEM key hogi
-  FILE_PATH: "./text.txt"        # file jo copy karni hai
-  DEST_PATH: "/home/ec2-user/"   # EC2 pe destination path
+  EC2_USER: "ec2-user"           # Amazon Linux ka default user
+  EC2_HOST: "3.85.167.56"        # Tera EC2 public IP
+  EC2_KEY: "$(ssh_key)"          # Azure Library me stored PEM key (secure variable)
+  REMOTE_FILE: "/home/ec2-user/text.txt"   # EC2 pe file ka path
+  LOCAL_COPY: "$(Build.ArtifactStagingDirectory)/text.txt"  # Azure pipeline me local path
 
 steps:
-- checkout: self
-
 # Step 1: Install SSH client
 - task: Bash@3
-  displayName: 'Install SSH client'
+  displayName: 'Install SSH Client'
   inputs:
     targetType: inline
     script: |
-      sudo apt-get update
+      sudo apt-get update -y
       sudo apt-get install -y openssh-client
 
-# Step 2: Create SSH key file from secret variable
+# Step 2: Create SSH private key from Azure variable
 - task: Bash@3
-  displayName: 'Setup SSH key'
+  displayName: 'Setup SSH Private Key'
   inputs:
     targetType: inline
     script: |
       echo "$EC2_KEY" > private_key.pem
       chmod 600 private_key.pem
+      echo "✅ SSH key created successfully."
 
-# Step 3: Copy file to EC2 using scp
+# Step 3: Copy file FROM EC2 to pipeline workspace
 - task: Bash@3
-  displayName: 'Copy text.txt to EC2 instance'
+  displayName: 'Download text.txt from EC2'
   inputs:
     targetType: inline
     script: |
-      scp -o StrictHostKeyChecking=no -i private_key.pem $FILE_PATH $EC2_USER@$EC2_HOST:$DEST_PATH
+      echo "📥 Downloading file from EC2..."
+      scp -vvv -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST:$REMOTE_FILE $LOCAL_COPY
+      echo "✅ File downloaded successfully to $LOCAL_COPY"
 
-# Step 4: (Optional) Verify file on EC2
-- task: Bash@3
-  displayName: 'Verify file on EC2'
+# Step 4: Publish the downloaded file as pipeline artifact
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: text.txt'
   inputs:
-    targetType: inline
-    script: |
-      ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST "ls -l $DEST_PATH"
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'EC2File'
+    publishLocation: 'Container'
