@@ -7,7 +7,7 @@ pool:
 variables:
   EC2_USER: "ec2-user"          # apne EC2 ka username (e.g. ubuntu)
   EC2_HOST: "3.85.167.56" # EC2 ka Public IP likh
-  EC2_KEY: "$(Pipeline.pem)"          # Azure DevOps secret variable jisme PEM key hogi
+  EC2_KEY: "$(ssh_key)"          # Azure DevOps secret variable jisme PEM key hogi
   FILE_PATH: "./text.txt"        # file jo copy karni hai
   DEST_PATH: "/home/ec2-user/"   # EC2 pe destination path
 
