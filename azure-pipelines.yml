@@ -29,8 +29,8 @@ steps:
   inputs:
     targetType: inline
     script: |
-      echo "$EC2_KEY" > Pipeline.pem
-      chmod 600 Pipeline.pem
+      echo "$EC2_KEY" > private_key.pem
+      chmod 600 private_key.pem
 
 # Step 3: Copy file to EC2 using scp
 - task: Bash@3
@@ -38,7 +38,7 @@ steps:
   inputs:
     targetType: inline
     script: |
-      scp -o StrictHostKeyChecking=no -i Pipeline.pem $FILE_PATH $EC2_USER@$EC2_HOST:$DEST_PATH
+      scp -o StrictHostKeyChecking=no -i private_key.pem $FILE_PATH $EC2_USER@$EC2_HOST:$DEST_PATH
 
 # Step 4: (Optional) Verify file on EC2
 - task: Bash@3
