@@ -1,19 +1,49 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+- main  # ya jis branch se tu run karwana chahta hai
 
 pool:
   vmImage: ubuntu-latest
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  EC2_USER: "ec2-user"          # apne EC2 ka username (e.g. ubuntu)
+  EC2_HOST: "3.85.167.56" # EC2 ka Public IP likh
+  EC2_KEY: "$(Pipeline.pem)"          # Azure DevOps secret variable jisme PEM key hogi
+  FILE_PATH: "./text.txt"        # file jo copy karni hai
+  DEST_PATH: "/home/ec2-user/"   # EC2 pe destination path
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+steps:
+- checkout: self
+
+# Step 1: Install SSH client
+- task: Bash@3
+  displayName: 'Install SSH client'
+  inputs:
+    targetType: inline
+    script: |
+      sudo apt-get update
+      sudo apt-get install -y openssh-client
+
+# Step 2: Create SSH key file from secret variable
+- task: Bash@3
+  displayName: 'Setup SSH key'
+  inputs:
+    targetType: inline
+    script: |
+      echo "$EC2_KEY" > Pipeline.pem
+      chmod 600 Pipeline.pem
+
+# Step 3: Copy file to EC2 using scp
+- task: Bash@3
+  displayName: 'Copy text.txt to EC2 instance'
+  inputs:
+    targetType: inline
+    script: |
+      scp -o StrictHostKeyChecking=no -i Pipeline.pem $FILE_PATH $EC2_USER@$EC2_HOST:$DEST_PATH
+
+# Step 4: (Optional) Verify file on EC2
+- task: Bash@3
+  displayName: 'Verify file on EC2'
+  inputs:
+    targetType: inline
+    script: |
+      ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST "ls -l $DEST_PATH"
